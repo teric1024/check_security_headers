@@ -1,6 +1,7 @@
 import re
 from typing import Tuple
-
+import ssl
+import socket
 
 from constants import EVAL_WARN, EVAL_OK
 
@@ -24,12 +25,12 @@ def eval_x_xss_protection(contents: str) -> Tuple[int, list]:
     #
     # value '1' is dangerous because it can be used to block legit site features. If this header is defined, either
     # one of the below values if recommended
-    if contents.lower() in ['1; mode=block', '0']:
+    if contents.lower().strip() in ['1; mode=block', '0']:
         return EVAL_OK, []
 
     return EVAL_WARN, []
 
-
+# Strict-Transport-Security (HTST)
 def eval_sts(contents: str) -> Tuple[int, list]:
     if re.match("^max-age=[0-9]+\\s*(;|$)\\s*", contents.lower()):
         return EVAL_OK, []
@@ -105,19 +106,40 @@ def eval_permissions_policy(contents: str) -> Tuple[int, list]:
 
 
 def eval_referrer_policy(contents: str) -> Tuple[int, list]:
-    if contents.lower().strip() in [
-        'no-referrer',
-        'no-referrer-when-downgrade',
-        'origin',
-        'origin-when-cross-origin',
-        'same-origin',
-        'strict-origin',
-        'strict-origin-when-cross-origin',
-    ]:
+    for content in contents.split(','):
+        if content.lower().strip() not in [
+            'no-referrer',
+            'no-referrer-when-downgrade',
+            'origin',
+            'origin-when-cross-origin',
+            'same-origin',
+            'strict-origin',
+            'strict-origin-when-cross-origin',
+        ]:
+            return EVAL_WARN, ["Unsafe contents: {}".format(contents)]
+    else:
         return EVAL_OK, []
 
-    return EVAL_WARN, ["Unsafe contents: {}".format(contents)]
+    
 
+def get_cipher_suite(hostname, port=443):
+    context = ssl.create_default_context()
+    with socket.create_connection((hostname, port)) as sock:
+        with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+            cipher_suite = ssock.cipher()
+            return cipher_suite
+
+def eval_cipher_suite(cipher_suite:Tuple[str, str,int]) -> Tuple[int, list]:
+    if cipher_suite[1] == "TLSv1.3":
+        return EVAL_OK, []
+    elif "DHE" in cipher_suite[0]:
+        return EVAL_OK, []
+    else:
+        return EVAL_WARN, ["Unsafe cipher suite: {}".format(cipher_suite)]
+
+def check_cipher_suite(hostname) -> Tuple[int, list]:
+    cipher_suite = get_cipher_suite(hostname)
+    return eval_cipher_suite(cipher_suite)
 
 def csp_parser(contents: str) -> dict:
     csp = {}

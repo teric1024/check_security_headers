@@ -65,7 +65,11 @@ class SecurityHeaders():
         'permissions-policy': {
             'recommended': True,
             'eval_func': utils.eval_permissions_policy,
-        }
+        },
+        'feature-policy':{ # old permission-policy
+            'recommended': True,
+            'eval_func': utils.eval_permissions_policy,
+        },
     }
 
     SERVER_VERSION_HEADERS = [
@@ -74,14 +78,9 @@ class SecurityHeaders():
         'x-aspnet-version',
     ]
 
-    def __init__(self, url, max_redirects=2, no_check_certificate=False):
-        parsed = urlparse(url)
-        if not parsed.scheme and not parsed.netloc:
-            url = "{}://{}".format(DEFAULT_URL_SCHEME, url)
-            parsed = urlparse(url)
-            if not parsed.scheme and not parsed.netloc:
-                raise InvalidTargetURL("Unable to parse the URL")
-
+    def __init__(self, url, max_redirects=2, no_check_certificate=False, check_server_version_header=True):
+        url, parsed = SecurityHeaders.parsed_url(url)
+        self.check_server_version_header = check_server_version_header
         self.protocol_scheme = parsed.scheme
         self.hostname = parsed.netloc
         self.path = parsed.path
@@ -95,9 +94,25 @@ class SecurityHeaders():
         else:
             self.target_url = parsed
 
-    def test_https(self):
-        conn = http.client.HTTPSConnection(self.hostname, context=ssl.create_default_context(),
-                                           timeout=self.DEFAULT_TIMEOUT)
+    def parsed_url(url):
+        parsed = urlparse(url)
+        if not parsed.scheme and not parsed.netloc:
+            https_url = "{}://{}".format(DEFAULT_URL_SCHEME, url)
+            parsed = urlparse(https_url)
+            if not parsed.scheme and not parsed.netloc:
+                raise InvalidTargetURL("Unable to parse the URL")
+            
+            https_check = SecurityHeaders.test_https(parsed.netloc)
+            if https_check["supported"]:
+                url = "{}://{}".format(DEFAULT_URL_SCHEME, url)
+            else:
+                url = "{}://{}".format("http", url)
+            parsed = urlparse(url)
+        return url,parsed
+
+    def test_https(hostname):
+        conn = http.client.HTTPSConnection(hostname, context=ssl.create_default_context(),
+                                           timeout=SecurityHeaders.DEFAULT_TIMEOUT)
         try:
             conn.request('GET', '/')
         except (socket.gaierror, socket.timeout, ConnectionRefusedError):
@@ -208,15 +223,16 @@ class SecurityHeaders():
                 warn = self.SECURITY_HEADERS_DICT[header].get('recommended')
                 retval[header] = {'defined': False, 'warn': warn, 'contents': None, 'notes': []}
 
-        for header in self.SERVER_VERSION_HEADERS:
-            if header in self.headers:
-                res, notes = utils.eval_version_info(self.headers[header])
-                retval[header] = {
-                    'defined': True,
-                    'warn': res == EVAL_WARN,
-                    'contents': self.headers[header],
-                    'notes': notes,
-                }
+        if self.check_server_version_header:
+            for header in self.SERVER_VERSION_HEADERS:
+                if header in self.headers:
+                    res, notes = utils.eval_version_info(self.headers[header])
+                    retval[header] = {
+                        'defined': True,
+                        'warn': res == EVAL_WARN,
+                        'contents': self.headers[header],
+                        'notes': notes,
+                    }
 
         return retval
 
