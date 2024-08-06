@@ -5,8 +5,34 @@ import constants
 
 import argparse
 import csv
+import json
+import os
 
 def validate_url(url:str):
+    """
+    Validates the security headers of a given URL.
+
+    Args:
+        url (str): The URL to validate.
+
+    Returns:
+        dict or None: A dictionary containing the security headers of the URL if successful, 
+                      or None if an error occurred.
+
+                      Dictionary format example:
+                      {
+                          "x-xss-protection": {
+                              "defined": True,
+                              "warn": True,
+                              "contents": "1; mode=block",
+                              "notes": "", # invalid description here
+                          },
+                          ...
+                      }
+
+    Raises:
+        None
+    """
     try:
         header_check = SecurityHeaders(url, 2, False, False)
         header_check.fetch_headers()
@@ -39,10 +65,9 @@ def validate_url(url:str):
 def get_target_urls(url_file_path):
     with open(url_file_path, "r") as f:
         return f.readlines()
-    # return ["adocday.com"]
 
 def check_default_pass_header(header:str):
-    return header in ['permissions-policy', 'content-security-policy']
+    return header in ['Permissions-Policy', 'Content-Security-Policy']
 
 def result_to_report_row(result, url):
     report_row = {}
@@ -51,6 +76,7 @@ def result_to_report_row(result, url):
         return report_row
     
     for header_name, header_info in result.items():
+        header_name = readable_row_name(header_name)
         if not header_info['defined']:
             report_row[header_name] = "N/A"
         elif header_info['warn']:
@@ -63,6 +89,30 @@ def result_to_report_row(result, url):
     
     return report_row
 
+def readable_row_name(header_name:str):
+    words = header_name.split("-")
+    capitalized_words = [word.capitalize() for word in words]
+    row_name = '-'.join(capitalized_words)
+    return row_name.replace("Xss", "XSS")
+
+def url_to_filename(url):
+    return url.split("://")[-1] + ".json"
+
+def save_if_warn(url, result):
+    directory_path = "./not_secure_urls/"
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
+    filepath = directory_path + url_to_filename(url)
+
+    if result is None:
+        return
+    
+    warning_info = {}
+    for header_name, header_info in result.items():
+        if header_info['warn']:
+            warning_info[header_name] = header_info
+    with open(filepath, "w") as f:
+        json.dump(warning_info, f)
 
 def main(url_file_path, output_csv_path):
     urls = get_target_urls(url_file_path)
@@ -70,20 +120,21 @@ def main(url_file_path, output_csv_path):
     for url in urls:
         url = url.strip()
         result = validate_url(url)
+        save_if_warn(url, result)
         report_row = result_to_report_row(result, url)
         report.append(report_row)
     with open(output_csv_path, "w", newline="") as f:
         headers_to_check = [
             'url',
-            'x-frame-options',
-            'x-xss-protection',
-            'strict-transport-security',
-            'referrer-policy',
-            'x-content-type-options',
-            'content-security-policy',
-            'permissions-policy',
-            'forward-secrecy',
-            'feature-policy',
+            'X-Frame-Options',
+            'X-XSS-Protection',
+            'Strict-Transport-Security',
+            'Referrer-Policy',
+            'X-Content-Type-Options',
+            'Content-Security-Policy',
+            'Permissions-Policy',
+            'Forward-Secrecy',
+            'Feature-Policy',
         ]
         w = csv.DictWriter(f, headers_to_check)
         w.writeheader()

@@ -1,4 +1,4 @@
-url,x-frame-options,x-xss-protection,strict-transport-security,referrer-policy,x-content-type-options,content-security-policy,permissions-policy,forward-secrecy,feature-policy
+url,X-Frame-Options,X-XSS-Protection,Strict-Transport-Security,Referrer-Policy,X-Content-Type-Options,Content-Security-Policy,Permissions-Policy,Forward-Secrecy,Feature-Policy
 adocday.com,OK,OK,OK,OK,N/A,OK,OK,OK,N/A
 google.com,OK,OK,OK,N/A,N/A,N/A,OK,OK,N/A
 nonexist-ewiornbgvefwdefrvjibognjf.com,,,,,,,,,

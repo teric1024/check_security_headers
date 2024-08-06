@@ -7,14 +7,14 @@ from constants import EVAL_WARN, EVAL_OK
 
 
 def eval_x_frame_options(contents: str) -> Tuple[int, list]:
-    if contents.lower() in ['deny', 'sameorigin']:
+    if contents.lower().strip() in ['deny', 'sameorigin']:
         return EVAL_OK, []
 
     return EVAL_WARN, []
 
 
 def eval_content_type_options(contents: str) -> Tuple[int, list]:
-    if contents.lower() == 'nosniff':
+    if contents.lower().strip() == 'nosniff':
         return EVAL_OK, []
 
     return EVAL_WARN, []
@@ -25,7 +25,7 @@ def eval_x_xss_protection(contents: str) -> Tuple[int, list]:
     #
     # value '1' is dangerous because it can be used to block legit site features. If this header is defined, either
     # one of the below values if recommended
-    if contents.lower().strip() in ['1; mode=block', '0']:
+    if contents.lower().strip().replace(' ', '') in ['1;mode=block', '0']:
         return EVAL_OK, []
 
     return EVAL_WARN, []
