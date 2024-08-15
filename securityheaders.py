@@ -94,7 +94,7 @@ class SecurityHeaders():
         else:
             self.target_url = parsed
 
-    def parsed_url(url):
+    def parsed_url(url): # TODO add port support
         parsed = urlparse(url)
         if not parsed.scheme and not parsed.netloc:
             https_url = "{}://{}".format(DEFAULT_URL_SCHEME, url)
@@ -123,7 +123,7 @@ class SecurityHeaders():
         return {'supported': True, 'certvalid': True}
 
     def _follow_redirect_until_response(self, url, follow_redirects=5):
-        temp_url = urlparse(url)
+        temp_url,_ = SecurityHeaders.parsed_url(url)
         while follow_redirects >= 0:
             if not temp_url.netloc:
                 raise InvalidTargetURL("Invalid redirect URL")

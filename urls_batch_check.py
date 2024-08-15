@@ -46,6 +46,7 @@ def validate_url(url:str):
         return None
     
     if header_check.protocol_scheme == "https":
+        # TODO add port support
         res, notes = utils.check_cipher_suite(header_check.hostname)
         headers["forward-secrecy"] = {
                     'defined': True,
@@ -96,7 +97,8 @@ def readable_row_name(header_name:str):
     return row_name.replace("Xss", "XSS")
 
 def url_to_filename(url):
-    return url.split("://")[-1] + ".json"
+    no_protocal_url = url.split("://")[-1]
+    return no_protocal_url.replace("/", "_") + ".json"
 
 def save_if_warn(url, result):
     directory_path = "./not_secure_urls/"
