@@ -82,29 +82,32 @@ class SecurityHeaders():
         url, parsed = SecurityHeaders.parsed_url(url)
         self.check_server_version_header = check_server_version_header
         self.protocol_scheme = parsed.scheme
-        self.hostname = parsed.netloc
+        self.hostname = parsed.hostname
         self.path = parsed.path
         self.max_redirects = max_redirects
         self.target_url = None
         self.verify_ssl = False if no_check_certificate else True
         self.headers = None
+        self.port = parsed.port
 
         if self.max_redirects:
             self.target_url = self._follow_redirect_until_response(url, self.max_redirects)
         else:
             self.target_url = parsed
 
-    def parsed_url(url): # TODO add port support
-        parsed = urlparse(url)
-        if not parsed.scheme and not parsed.netloc:
-            https_url = "{}://{}".format(DEFAULT_URL_SCHEME, url)
+    def parsed_url(url):
+        if "//" not in url:
+            url = "//" + url
+        parsed = urlparse(url) # url = google.com:8443, parsed.scheme = google.com
+        if not parsed.scheme:
+            https_url = "{}://{}".format(DEFAULT_URL_SCHEME, parsed.netloc)
             parsed = urlparse(https_url)
             if not parsed.scheme and not parsed.netloc:
                 raise InvalidTargetURL("Unable to parse the URL")
             
             https_check = SecurityHeaders.test_https(parsed.netloc)
             if https_check["supported"]:
-                url = "{}://{}".format(DEFAULT_URL_SCHEME, url)
+                url = "{}://{}".format(DEFAULT_URL_SCHEME, parsed.netloc)
             else:
                 url = "{}://{}".format("http", url)
             parsed = urlparse(url)
@@ -123,22 +126,12 @@ class SecurityHeaders():
         return {'supported': True, 'certvalid': True}
 
     def _follow_redirect_until_response(self, url, follow_redirects=5):
-        temp_url,_ = SecurityHeaders.parsed_url(url)
+        _, temp_url = SecurityHeaders.parsed_url(url)
         while follow_redirects >= 0:
             if not temp_url.netloc:
                 raise InvalidTargetURL("Invalid redirect URL")
 
-            if temp_url.scheme == 'http':
-                conn = http.client.HTTPConnection(temp_url.netloc, timeout=self.DEFAULT_TIMEOUT)
-            elif temp_url.scheme == 'https':
-                if self.verify_ssl:
-                    ctx = ssl.create_default_context()
-                else:
-                    ctx = ssl._create_stdlib_context()
-                conn = http.client.HTTPSConnection(temp_url.netloc, context=ctx, timeout=self.DEFAULT_TIMEOUT)
-            else:
-                raise InvalidTargetURL("Unsupported protocol scheme")
-
+            conn = self.open_connection(temp_url)
             try:
                 conn.request('GET', temp_url.path, headers=self.REQUEST_HEADERS)
                 res = conn.getresponse()
@@ -173,13 +166,13 @@ class SecurityHeaders():
 
     def open_connection(self, target_url):
         if target_url.scheme == 'http':
-            conn = http.client.HTTPConnection(target_url.hostname, timeout=self.DEFAULT_TIMEOUT)
+            conn = http.client.HTTPConnection(target_url.netloc, timeout=self.DEFAULT_TIMEOUT)
         elif target_url.scheme == 'https':
             if self.verify_ssl:
                 ctx = ssl.create_default_context()
             else:
                 ctx = ssl._create_stdlib_context()
-            conn = http.client.HTTPSConnection(target_url.hostname, context=ctx, timeout=self.DEFAULT_TIMEOUT)
+            conn = http.client.HTTPSConnection(target_url.netloc, context=ctx, timeout=self.DEFAULT_TIMEOUT)
         else:
             raise InvalidTargetURL("Unsupported protocol scheme")
 

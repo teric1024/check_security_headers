@@ -46,8 +46,10 @@ def validate_url(url:str):
         return None
     
     if header_check.protocol_scheme == "https":
-        # TODO add port support
-        res, notes = utils.check_cipher_suite(header_check.hostname)
+        if header_check.port is not None:
+            res, notes = utils.check_cipher_suite(header_check.hostname, header_check.port)
+        else:
+            res, notes = utils.check_cipher_suite(header_check.hostname)
         headers["forward-secrecy"] = {
                     'defined': True,
                     'warn': res == constants.EVAL_WARN,

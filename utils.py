@@ -137,7 +137,7 @@ def eval_cipher_suite(cipher_suite:Tuple[str, str,int]) -> Tuple[int, list]:
     else:
         return EVAL_WARN, ["Unsafe cipher suite: {}".format(cipher_suite)]
 
-def check_cipher_suite(hostname, port=443) -> Tuple[int, list]:
+def check_cipher_suite(hostname:str, port:int=443) -> Tuple[int, list]:
     cipher_suite = get_cipher_suite(hostname, port)
     return eval_cipher_suite(cipher_suite)
 
