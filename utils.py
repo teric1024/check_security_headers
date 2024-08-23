@@ -43,6 +43,11 @@ class HSTSParser():
         match = re.search(r'max-age=(\d+)', max_age_content)
         if match:
             return int(match.group(1))
+        # max-age can be quoted
+        # ref: https://www.rfc-editor.org/rfc/rfc6797#section-6.2
+        match = re.search(r'max-age="(\d+)"', max_age_content)
+        if match:
+            return int(match.group(1))
         return None
 
     def check_sts_format(self) -> bool:
