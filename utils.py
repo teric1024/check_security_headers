@@ -1,25 +1,25 @@
 import re
-from typing import Tuple
+from typing import Tuple, Dict
 import ssl
 import socket
 
 from constants import EVAL_WARN, EVAL_OK
 
-
+# X-Frame-Options
 def eval_x_frame_options(contents: str) -> Tuple[int, list]:
     if contents.lower().strip() in ['deny', 'sameorigin']:
         return EVAL_OK, []
 
     return EVAL_WARN, []
 
-
+# X-Content-Type-Options
 def eval_content_type_options(contents: str) -> Tuple[int, list]:
     if contents.lower().strip() == 'nosniff':
         return EVAL_OK, []
 
     return EVAL_WARN, []
 
-
+# X-XSS-Protection
 def eval_x_xss_protection(contents: str) -> Tuple[int, list]:
     # This header is deprecated but still used quite a lot
     #
@@ -30,13 +30,68 @@ def eval_x_xss_protection(contents: str) -> Tuple[int, list]:
 
     return EVAL_WARN, []
 
-# Strict-Transport-Security (HTST)
+
+class HSTSParser():
+    def __init__(self, content:str) -> None:
+        self.content = content.lower()
+        self.max_age = 0
+        self.preload = False
+        self.includeSubDomain = False
+        self.isFormValid = self.check_sts_format()
+    
+    def parse_max_age(max_age_content) -> int:
+        match = re.search(r'max-age=(\d+)', max_age_content)
+        if match:
+            return int(match.group(1))
+        return None
+
+    def check_sts_format(self) -> bool:
+        contents = self.content.split(";")
+        for idx, content in enumerate(contents):
+            max_age = HSTSParser.parse_max_age(content)
+            if max_age:
+                self.max_age = max_age
+                del contents[idx]
+                if len(contents) == 0:
+                    return True
+                break
+        else:
+            return False
+        
+        for idx, content in enumerate(contents):
+            if "includesubdomains" in content.strip():
+                self.includeSubDomain = True
+                del contents[idx]
+                break
+        else:
+            return False
+        
+        if len(contents) == 1:
+            if contents[0].strip() == "preload":
+                self.preload = True
+                return True
+            else:
+                return False
+        else:
+            return True
+
+# Strict-Transport-Security (HSTS)
+# https://www.rfc-editor.org/rfc/rfc6797
 def eval_sts(contents: str) -> Tuple[int, list]:
-    if re.match("^max-age=[0-9]+\\s*(;|$)\\s*", contents.lower()):
+    MAX_AGE_MINIMUM = 480
+    hsts_result = HSTSParser(contents)
+    if hsts_result.isFormValid: 
+        # restriction of preload
+        # ref : https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security#preload
+        if hsts_result.preload and hsts_result.max_age < 31536000: # 1 year
+            return EVAL_WARN, ["Preload is not valid when max-age < 31536000"]
+        
+        if hsts_result.max_age < MAX_AGE_MINIMUM:
+            return EVAL_WARN, [f"max-age too small, should be greater than {MAX_AGE_MINIMUM} seconds"]
+        
         return EVAL_OK, []
-
-    return EVAL_WARN, []
-
+    else:
+        return EVAL_WARN, []
 
 def eval_csp(contents: str) -> Tuple[int, list]:
     UNSAFE_RULES = {
@@ -84,7 +139,7 @@ def eval_version_info(contents: str) -> Tuple[int, list]:
 
     return EVAL_OK, []
 
-
+# Permissions-Policy 
 def eval_permissions_policy(contents: str) -> Tuple[int, list]:
     # Configuring Permission-Policy is very case-specific and it's difficult to define a particular recommendation.
     # We apply here a logic, that access to privacy-sensitive features and payments API should be restricted.
@@ -104,7 +159,7 @@ def eval_permissions_policy(contents: str) -> Tuple[int, list]:
 
     return EVAL_OK, []
 
-
+# Referrer-Policy
 def eval_referrer_policy(contents: str) -> Tuple[int, list]:
     for content in contents.split(','):
         if content.lower().strip() not in [
