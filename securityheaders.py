@@ -5,6 +5,7 @@ import socket
 import ssl
 import sys
 from urllib.parse import urlparse
+from typing import Tuple, List
 
 import utils
 from constants import DEFAULT_URL_SCHEME, EVAL_WARN
@@ -190,6 +191,17 @@ class SecurityHeaders():
 
         headers = res.getheaders()
         self.headers = {x[0].lower(): x[1] for x in headers}
+        self.get_duplicate_header(headers)
+        
+    def get_duplicate_header(self, raw_headers: List[Tuple[str, str]]):
+        seen = set()
+        duplicates = []
+        for header, _ in raw_headers:
+            header = header.lower()
+            if header in seen:
+                duplicates.append(header)
+            seen.add(header)
+        self.duplicated_headers = duplicates
 
     def check_headers(self):
         """ Default return array """
@@ -200,6 +212,16 @@ class SecurityHeaders():
 
         """ Loop through headers and evaluate the risk """
         for header in self.SECURITY_HEADERS_DICT:
+            # check if security headers are duplicated
+            if header in self.duplicated_headers:
+                retval[header] = {
+                    'defined': True,
+                    'warn': True,
+                    'contents': "",
+                    'notes': "duplicated header",
+                }
+                continue
+            
             if header in self.headers:
                 eval_func = self.SECURITY_HEADERS_DICT[header].get('eval_func')
                 if not eval_func:
