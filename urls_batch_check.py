@@ -67,12 +67,11 @@ def validate_url(url:str):
 
 def get_target_urls(url_file_path):
     with open(url_file_path, "r") as f:
-        return f.readlines()
+        lines = f.readlines()
+        lines = [line.replace("\"", "").replace("'", "") for line in lines]
+        return [line.strip() for line in lines]
 
-def check_default_pass_header(header:str):
-    return header in ['Permissions-Policy', 'Content-Security-Policy']
-
-def result_to_report_row(result, url):
+def result_to_report_row(result, url, pass_check_header_list):
     report_row = {}
     report_row["url"] = url
     if result is None:
@@ -87,7 +86,7 @@ def result_to_report_row(result, url):
         else:
             report_row[header_name] = "OK"
 
-        if check_default_pass_header(header_name) and header_info['defined']:
+        if (header_name in pass_check_header_list) and header_info['defined']:
             report_row[header_name] = "OK" 
     
     return report_row
@@ -98,9 +97,9 @@ def readable_row_name(header_name:str):
     row_name = '-'.join(capitalized_words)
     return row_name.replace("Xss", "XSS")
 
-def url_to_filename(url):
+def url_to_filename(url:str):
     no_protocal_url = url.split("://")[-1]
-    return no_protocal_url.replace("/", "_") + ".json"
+    return no_protocal_url.replace("/", "_").replace("?","-") + ".json"
 
 def save_if_warn(url, result):
     directory_path = "./not_secure_urls/"
@@ -118,14 +117,14 @@ def save_if_warn(url, result):
     with open(filepath, "w") as f:
         json.dump(warning_info, f)
 
-def main(url_file_path, output_csv_path):
+def main(url_file_path, output_csv_path, pass_check_header_list):
     urls = get_target_urls(url_file_path)
     report = []
     for url in urls:
         url = url.strip()
         result = validate_url(url)
         save_if_warn(url, result)
-        report_row = result_to_report_row(result, url)
+        report_row = result_to_report_row(result, url, pass_check_header_list)
         report.append(report_row)
     with open(output_csv_path, "w", newline="") as f:
         headers_to_check = [
@@ -152,12 +151,25 @@ def parse_args():
                         help='txt file including urls')
     parser.add_argument('--output_csv', dest='output_csv', default='output.csv', type=str,
                         help='result csv file path')
+    parser.add_argument('--pass_csp_header', dest='pass_csp_header',
+                        help='pass check for csp header', action='store_true')
+    parser.add_argument('--pass_permissions_policy', dest='pass_permissions_policy',
+                        help='pass check for permissions policy', action='store_true')
     args = parser.parse_args()
     return args
 
+def make_pass_check_header_list(args):
+    pass_check_header_list = []
+    if args.pass_csp_header:
+        pass_check_header_list.append('Content-Security-Policy')
+    if args.pass_permissions_policy:
+        pass_check_header_list.append('Permissions-Policy')
+    return pass_check_header_list
+
 if __name__ == "__main__":
     args = parse_args()
-    main(args.target_url_file, args.output_csv)
+    pass_check_header_list = make_pass_check_header_list(args)
+    main(args.target_url_file, args.output_csv, pass_check_header_list)
     print("""
 ⠀⠀⠀⠀⠀⠀⢀⣀⣀⣀⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣀⣀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⣾⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⠀⠀⠀⠀⢀⠀⠈⡇⠀⠀⠀⠀
