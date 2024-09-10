@@ -136,10 +136,12 @@ class SecurityHeaders():
             try:
                 conn.request('GET', temp_url.path, headers=self.REQUEST_HEADERS)
                 res = conn.getresponse()
-            except (socket.gaierror, socket.timeout, ConnectionRefusedError) as e:
+            except (socket.gaierror, socket.timeout, ConnectionRefusedError, http.client.RemoteDisconnected) as e:
                 raise UnableToConnect("Connection failed {}".format(temp_url.netloc)) from e
             except ssl.SSLError as e:
                 raise UnableToConnect("SSL Error") from e
+            except Exception as e:
+                raise UnableToConnect(f"Unknown error {e}. Connection failed {temp_url.netloc}") from e
 
             if res.status >= 300 and res.status < 400:
                 headers = res.getheaders()
@@ -186,8 +188,10 @@ class SecurityHeaders():
         try:
             conn.request('GET', self.target_url.path, headers=self.REQUEST_HEADERS)
             res = conn.getresponse()
-        except (socket.gaierror, socket.timeout, ConnectionRefusedError, ssl.SSLError) as e:
+        except (socket.gaierror, socket.timeout, ConnectionRefusedError, ssl.SSLError, http.client.RemoteDisconnected) as e:
             raise UnableToConnect("Connection failed {}".format(self.target_url.hostname)) from e
+        except Exception as e:
+            raise UnableToConnect(f"Unknown error {e}. Connection failed {self.target_url.hostname}") from e
 
         headers = res.getheaders()
         self.headers = {x[0].lower(): x[1] for x in headers}
