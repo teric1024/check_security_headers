@@ -57,6 +57,11 @@ $
 ## Reference
 - [OWASP cheat sheet](https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html#x-xss-protection)
 - https://securityheaders.com/
+- https://github.com/ssllabs/research/wiki/SSL-and-TLS-Deployment-Best-Practices#25-use-forward-secrecy
+- https://docs.python.org/3/library/ssl.html
+- https://docs.python.org/3/library/ssl.html#ssl.SSLContext.wrap_socket
+- https://docs.python.org/3/library/ssl.html#ssl.SSLSocket
+- https://github.com/benoitc/gunicorn/issues/1966
 
 ## Note
 This is largely based on the work of [@juerkkil](https://github.com/juerkkil). 
