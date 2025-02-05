@@ -98,7 +98,7 @@ class SecurityHeaders():
 
     def parsed_url(url):
         if "//" not in url:
-            url = "//" + url
+            url = "//" + url # in order to make the url parse function work for google.com
         parsed = urlparse(url) # url = google.com:8443, parsed.scheme = google.com
         if not parsed.scheme:
             https_url = "{}://{}".format(DEFAULT_URL_SCHEME, parsed.netloc)
@@ -130,7 +130,7 @@ class SecurityHeaders():
         _, temp_url = SecurityHeaders.parsed_url(url)
         while follow_redirects >= 0:
             if not temp_url.netloc:
-                raise InvalidTargetURL("Invalid redirect URL")
+                raise InvalidTargetURL(f"Invalid redirect URL: {temp_url}")
 
             conn = self.open_connection(temp_url)
             try:

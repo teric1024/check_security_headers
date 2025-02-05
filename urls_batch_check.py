@@ -99,7 +99,7 @@ def readable_row_name(header_name:str):
 
 def url_to_filename(url:str):
     no_protocal_url = url.split("://")[-1]
-    return no_protocal_url.replace("/", "_").replace("?","-") + ".json"
+    return no_protocal_url.replace("/", "_").replace("?","-").replace(":","-") + ".json"
 
 def save_if_warn(url, result):
     directory_path = "./not_secure_urls/"
