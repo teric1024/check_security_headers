@@ -204,8 +204,12 @@ def eval_referrer_policy(contents: str) -> Tuple[int, list]:
 
     
 
-def get_cipher_suite(hostname, port=443):
+def get_cipher_suite(hostname, port=443, check_certificate=True):
     context = ssl.create_default_context()
+    if not check_certificate:
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+    # cert = ssl.get_server_certificate((hostname, port))
     with socket.create_connection((hostname, port)) as sock:
         with context.wrap_socket(sock, server_hostname=hostname) as ssock:
             cipher_suite = ssock.cipher()
@@ -219,8 +223,8 @@ def eval_cipher_suite(cipher_suite:Tuple[str, str,int]) -> Tuple[int, list]:
     else:
         return EVAL_WARN, ["Unsafe cipher suite: {}".format(cipher_suite)]
 
-def check_cipher_suite(hostname:str, port:int=443) -> Tuple[int, list]:
-    cipher_suite = get_cipher_suite(hostname, port)
+def check_cipher_suite(hostname:str, port:int=443, check_certificate:bool=True) -> Tuple[int, list]:
+    cipher_suite = get_cipher_suite(hostname, port, check_certificate)
     return eval_cipher_suite(cipher_suite)
 
 def csp_parser(contents: str) -> Dict[str, List[str]]:

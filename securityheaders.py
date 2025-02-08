@@ -79,7 +79,7 @@ class SecurityHeaders():
         'x-aspnet-version',
     ]
 
-    def __init__(self, url, max_redirects=2, no_check_certificate=False, check_server_version_header=True):
+    def __init__(self, url, max_redirects=2, check_certificate=True, check_server_version_header=True):
         url, parsed = SecurityHeaders.parsed_url(url)
         self.check_server_version_header = check_server_version_header
         self.protocol_scheme = parsed.scheme
@@ -87,7 +87,7 @@ class SecurityHeaders():
         self.path = parsed.path
         self.max_redirects = max_redirects
         self.target_url = None
-        self.verify_ssl = False if no_check_certificate else True
+        self.verify_ssl = check_certificate
         self.headers = None
         self.port = parsed.port
 
@@ -101,16 +101,16 @@ class SecurityHeaders():
             url = "//" + url # in order to make the url parse function work for google.com
         parsed = urlparse(url) # url = google.com:8443, parsed.scheme = google.com
         if not parsed.scheme:
-            https_url = "{}://{}".format(DEFAULT_URL_SCHEME, parsed.netloc)
+            https_url = f"{DEFAULT_URL_SCHEME}://{parsed.netloc}{parsed.path}"
             parsed = urlparse(https_url)
             if not parsed.scheme and not parsed.netloc:
                 raise InvalidTargetURL("Unable to parse the URL")
             
             https_check = SecurityHeaders.test_https(parsed.netloc)
             if https_check["supported"]:
-                url = "{}://{}".format(DEFAULT_URL_SCHEME, parsed.netloc)
+                url = f"{DEFAULT_URL_SCHEME}://{parsed.netloc}{parsed.path}"
             else:
-                url = "{}://{}".format("http", url)
+                url = f"http://{parsed.netloc}{parsed.path}"
             parsed = urlparse(url)
         return url,parsed
 
@@ -139,7 +139,7 @@ class SecurityHeaders():
             except (socket.gaierror, socket.timeout, ConnectionRefusedError, http.client.RemoteDisconnected) as e:
                 raise UnableToConnect("Connection failed {}".format(temp_url.netloc)) from e
             except ssl.SSLError as e:
-                raise UnableToConnect("SSL Error") from e
+                raise UnableToConnect(f"SSL Error {e.reason}") from e
             except Exception as e:
                 raise UnableToConnect(f"Unknown error {e}. Connection failed {temp_url.netloc}") from e
 
@@ -171,10 +171,10 @@ class SecurityHeaders():
         if target_url.scheme == 'http':
             conn = http.client.HTTPConnection(target_url.netloc, timeout=self.DEFAULT_TIMEOUT)
         elif target_url.scheme == 'https':
-            if self.verify_ssl:
-                ctx = ssl.create_default_context()
-            else:
-                ctx = ssl._create_stdlib_context()
+            ctx = ssl.create_default_context()
+            if not self.verify_ssl:
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
             conn = http.client.HTTPSConnection(target_url.netloc, context=ctx, timeout=self.DEFAULT_TIMEOUT)
         else:
             raise InvalidTargetURL("Unsupported protocol scheme")

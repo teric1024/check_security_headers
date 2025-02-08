@@ -34,7 +34,10 @@ def validate_url(url:str):
         None
     """
     try:
-        header_check = SecurityHeaders(url, 2, False, False)
+        header_check = SecurityHeaders(url, 
+                                       max_redirects=2, 
+                                       check_certificate=False,
+                                       check_server_version_header=False)
         header_check.fetch_headers()
         headers = header_check.check_headers()
     except SecurityHeadersException as e:
@@ -47,9 +50,9 @@ def validate_url(url:str):
     
     if header_check.protocol_scheme == "https":
         if header_check.port is not None:
-            res, notes = utils.check_cipher_suite(header_check.hostname, header_check.port)
+            res, notes = utils.check_cipher_suite(header_check.hostname, header_check.port, check_certificate=False)
         else:
-            res, notes = utils.check_cipher_suite(header_check.hostname)
+            res, notes = utils.check_cipher_suite(header_check.hostname, check_certificate=False)
         headers["forward-secrecy"] = {
                     'defined': True,
                     'warn': res == constants.EVAL_WARN,
