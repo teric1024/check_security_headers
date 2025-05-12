@@ -174,7 +174,7 @@ def eval_permissions_policy(contents: str) -> Tuple[int, list]:
     pp_parsed = permissions_policy_parser(contents)
     notes = []
     pp_unsafe = False
-    RESTRICTED_PRIVACY_POLICY_FEATURES = ['camera', 'geolocation', 'microphone', 'payment']
+    RESTRICTED_PRIVACY_POLICY_FEATURES = ['camera', 'geolocation', 'microphone', 'payment', 'fullscreen']
 
     for feature in RESTRICTED_PRIVACY_POLICY_FEATURES:
         if feature not in pp_parsed or '*' in pp_parsed.get(feature):
