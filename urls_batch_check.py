@@ -48,6 +48,7 @@ def validate_url(url:str):
         print(f"Failed to get headers from {url}.")
         return None
     
+    # Check Forward Secrecy
     if header_check.protocol_scheme == "https":
         if header_check.port is not None:
             res, notes = utils.check_cipher_suite(header_check.hostname, header_check.port, check_certificate=False)
