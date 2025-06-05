@@ -22,6 +22,8 @@ class InvalidTargetURL(SecurityHeadersException):
 class UnableToConnect(SecurityHeadersException):
     pass
 
+class ExceedMaxRedirection(SecurityHeadersException):
+    pass
 
 class SecurityHeaders():
     DEFAULT_TIMEOUT = 10
@@ -157,7 +159,8 @@ class SecurityHeaders():
             follow_redirects -= 1
 
         # More than x redirects, stop here
-        return None
+        raise ExceedMaxRedirection("Exceeded maximum number of redirects")
+
 
     def test_http_to_https(self, follow_redirects=5):
         url = "http://{}{}".format(self.hostname, self.path)
