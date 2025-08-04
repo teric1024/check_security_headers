@@ -93,7 +93,13 @@ def eval_sts(contents: str) -> Tuple[int, list]:
         
         if hsts_result.max_age < MAX_AGE_MINIMUM:
             return EVAL_WARN, [f"max-age too small, should be greater than {MAX_AGE_MINIMUM} seconds"]
+
+        if not hsts_result.includeSubDomain:
+            return EVAL_WARN, ["includeSubDomains is not set, which is a security risk"]
         
+        if not hsts_result.preload:
+            return EVAL_WARN, ["Preload is not set, which is a security risk"]
+
         return EVAL_OK, []
     else:
         return EVAL_WARN, []
