@@ -36,5 +36,10 @@ class TestEvalSTS(unittest.TestCase):
         self.assertEqual(utils.eval_sts("max-age=20")[0], utils.EVAL_WARN,
                          "max-age should be greater, should alert")
 
+class TestEvalPermissionsPolicy(unittest.TestCase):
+    def test_eval_permission_policy(self):
+        self.assertEqual(utils.eval_permissions_policy("geolocation=()")[0], utils.EVAL_OK,
+                         "Should be OK")
+
 if __name__ == "__main__":
     unittest.main()
